@@ -1,9 +1,6 @@
 package config
 
 import (
-	"fmt"
-	"runtime"
-
 	logrus "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -11,10 +8,11 @@ import (
 var Cfg *Config = &Config{}
 
 type Config struct {
-	PROTO         string `mapstructure:"GRPC_SERVER_BIND_PROTOCOL"`
-	PORT          string `mapstructure:"GRPC_SERVER_BIND_PORT"`
-	LOGGING_LEVEL string `mapstructure:"LOGGING_LEVEL"`
-	MAX_THREADS   int    `mapstructure:"MAX_THREADS"`
+	BIND_PORT         int    `mapstructure:"BIND_PORT"`
+	DB_PATH           string `mapstructure:"DB_PATH"`
+	GRPC_SERVICE_ADDR string `mapstructure:"GRPC_SERVICE_ADDR"`
+	GRPC_SERVICE_PORT string `mapstructure:"GRPC_SERVICE_PORT"`
+	LOGGING_LEVEL     string `mapstructure:"LOGGING_LEVEL"`
 }
 
 func (c *Config) SetLoggingLevel(level string) {
@@ -29,27 +27,22 @@ func (c *Config) GetLoggingLevel() logrus.Level {
 	return logrus.GetLevel()
 }
 
-func GetMaxThreads() int {
-	return Cfg.MAX_THREADS
-}
-
 func init() {
 	viper.AddConfigPath(".")
 
 	viper.SetConfigName("app")
 	viper.SetConfigType("env")
 	viper.AutomaticEnv()
-	viper.SetDefault("PROTO", "tcp")
-	viper.SetDefault("PORT", ":50051")
+	viper.SetDefault("BIND_PORT", 4444)
 	viper.SetDefault("LOGGING_LEVEL", "error")
-	fmt.Println(runtime.NumCPU())
-	viper.SetDefault("MAX_THREADS", runtime.NumCPU())
+	viper.SetDefault("DB_PATH", "./gorm.db")
+	viper.SetDefault("GRPC_SERVICE_ADDR", "localhost")
+	viper.SetDefault("GRPC_SERVICE_PORT", "50051")
 
 	err := viper.ReadInConfig()
 	if err != nil {
 		panic("Cannot Read Config")
 	}
 	err = viper.Unmarshal(&Cfg)
-	runtime.GOMAXPROCS(Cfg.MAX_THREADS)
 	Cfg.SetLoggingLevel(Cfg.LOGGING_LEVEL)
 }

@@ -1,0 +1,24 @@
+syntax = "proto3";
+option go_package="hashservice;hashservice";
+package hashservice;
+
+
+service HashService {
+  rpc CreateHash (ProtoArrayOfStrings) returns (ProtoArrayOfHashes) {}
+}
+
+message ProtoStringToHash {
+  string Str = 1;
+}
+
+message ProtoArrayOfStrings {
+    repeated ProtoStringToHash StrToConvert = 1;
+}
+
+message ProtoHash {
+    string Hash = 1;
+}
+
+message ProtoArrayOfHashes {
+    repeated ProtoHash Hashes = 1;
+}
