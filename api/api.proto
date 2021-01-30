@@ -13,6 +13,7 @@ message ProtoStringToHash {
 
 message ProtoArrayOfStrings {
     repeated ProtoStringToHash StrToConvert = 1;
+    string RequestId = 2;
 }
 
 message ProtoHash {
@@ -21,4 +22,5 @@ message ProtoHash {
 
 message ProtoArrayOfHashes {
     repeated ProtoHash Hashes = 1;
+    string RequestId = 2;
 }

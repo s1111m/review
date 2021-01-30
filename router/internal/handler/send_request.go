@@ -27,20 +27,19 @@ func convertProtoHashArrayToArrayOfHashes(hashes *hashservice.ProtoArrayOfHashes
 	}
 	return arrayOfHashes
 }
-func sendToHashservice(strings models.ArrayOfStrings) (*hashservice.ProtoArrayOfHashes, error) {
-
-	cwt, _ := context.WithTimeout(context.Background(), time.Second*60)
-
+func sendToHashservice(strings models.ArrayOfStrings, ctx context.Context) (*hashservice.ProtoArrayOfHashes, error) {
+	cwt, _ := context.WithTimeout(ctx, time.Second*10)
 	conn, err := grpc.DialContext(cwt, config.Cfg.GRPC_SERVICE_ADDR+":"+config.Cfg.GRPC_SERVICE_PORT, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
-		panic(err)
+		config.Logger.WithError(err)
 	}
 	defer conn.Close()
-
 	uc := hashservice.NewHashServiceClient(conn)
-
-	us, err := uc.CreateHash(cwt, convertStringToProtoStringArray(strings))
+	payload := convertStringToProtoStringArray(strings)
+	payload.RequestId = cwt.Value("request-id").(string)
+	us, err := uc.CreateHash(cwt, payload)
 	if err != nil {
+		config.Logger.WithError(err)
 		return nil, errors.New("Can't make hashes")
 	}
 	return us, nil

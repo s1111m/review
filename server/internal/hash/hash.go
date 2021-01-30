@@ -3,18 +3,20 @@ package hash
 import (
 	"crypto/sha512"
 	"fmt"
+	"server/internal/config"
 	"server/pkg/hashservice"
-	"strconv"
 	"sync"
+
+	"github.com/sirupsen/logrus"
 )
 
 func GetHash(data string) string {
 	bytes := sha512.Sum512([]byte(data))
 	value := fmt.Sprintf("%x", []byte(bytes[:]))
-	// log.WithFields(log.Fields{
-	// 	"original": data,
-	// 	"hash":     value,
-	// }).Info("Sucessfuly hashed")
+	config.Logger.WithFields(logrus.Fields{
+		"original": data,
+		"hash":     value,
+	}).Trace("Sucessfuly hashed")
 	return value
 
 }
@@ -29,34 +31,48 @@ func GetHashesFromStrings(data []string) []string {
 
 func GetHashesFromProtoArrayOfStrings(arr *hashservice.ProtoArrayOfStrings) *hashservice.ProtoArrayOfHashes {
 	//выделим память под наш ответ
+	config.Logger.WithFields(logrus.Fields{
+		"request-id": arr.GetRequestId(),
+	}).Trace("Start Hashing")
 	hashesResponse := hashservice.ProtoArrayOfHashes{}
 	//сюда будем наваливать результат работы тредов и добавлять в массив выше
 	c := make(chan string)
+	//
 	// стоп-семафор, вычисляем число процов и тормозим если тредов больше
-	semaphoreChan := make(chan struct{}, 16)
+	semaphoreChan := make(chan struct{}, config.Cfg.MAX_THREADS-3)
 	defer close(semaphoreChan)
-	defer close(c)
+	// горутина будет получать хэши в порядке запуска горутин и записывать в слайс.
+	go func() {
+		for {
+			readyHash, ok := <-c
+			if ok == false {
+				break // exit break loop
+			} else {
+				hashesResponse.Hashes = append(hashesResponse.Hashes, &hashservice.ProtoHash{Hash: readyHash}) // собрали слайс и вернули
+			}
+		}
+		defer close(c)
+	}()
 	// чтобы дождаться завершения всех тредов
-	var wg sync.WaitGroup
 	//погнали по всему массиву
+	var wg sync.WaitGroup
 	for _, str := range arr.StrToConvert {
 		semaphoreChan <- struct{}{} // заминусовали семафор
 		go func(str string) {
-			defer wg.Done()
 			wg.Add(1)
-			fmt.Println(GetHash(str))
 			c <- GetHash(str) //посчитали хэш, отправили в канал
 			<-semaphoreChan   // почистили семафор
-			return
+			wg.Done()
 		}(str.Str)
 	}
+	//Блокируем выполнение функции до завершения всех тредов
 	wg.Wait() // подождали
-
-	for i := 0; i < len(arr.StrToConvert); i++ { //ожидаем столько сообщений, сколько длина массива
-		readyHash := <-c
-		fmt.Println(strconv.Itoa(i) + readyHash + "\r\n")
-		hashesResponse.Hashes = append(hashesResponse.Hashes, &hashservice.ProtoHash{Hash: readyHash}) // собрали слайс и вернули
-	}
+	// перекинули requestId и отправили обратным сообщением
+	hashesResponse.RequestId = arr.RequestId
+	config.Logger.WithFields(logrus.Fields{
+		"request-id": hashesResponse.RequestId,
+		//"response":   hashesResponse.Hashes,
+	}).Trace("Sending response back")
 
 	return &hashesResponse
 }

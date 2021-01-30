@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"router/internal/config"
@@ -18,7 +19,9 @@ func DbGet(id uint) *models.Hash {
 	return &user
 }
 
-func DbWrite(hashes models.ArrayOfHash) models.ArrayOfHash {
+func DbWrite(hashes models.ArrayOfHash, ctx context.Context) models.ArrayOfHash {
+
+	fmt.Println(ctx.Value("request-id"))
 	var response models.ArrayOfHash
 	for _, hash := range hashes {
 		db.Create(&hash)
@@ -52,13 +55,7 @@ func init() {
 	err := *new(error)
 	db, err = gorm.Open(sqlite.Open(config.Cfg.DB_PATH), &gorm.Config{})
 	if err != nil {
-		fmt.Println("alarm")
+		config.Logger.WithError(err)
 	}
 	db.AutoMigrate(&models.Hash{})
-	// db.Create(&models.Hash{Hash: "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"})
-	// db.Create(&models.Hash{Hash: "!fc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434lla"})
-	// db.Create(&models.Hash{Hash: "!!ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"})
-	// db.Create(&models.Hash{Hash: "!!!fc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"})
-	//db.First(&user)
-	//fmt.Printf("%v", &user)
 }

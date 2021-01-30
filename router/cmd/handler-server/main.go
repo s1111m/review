@@ -3,11 +3,12 @@
 package main
 
 import (
-	"log"
 	"os"
+	"os/signal"
 	"router/internal/config"
 	"router/internal/handler"
 	"router/internal/handler/operations"
+	"syscall"
 
 	"github.com/go-openapi/loads"
 	flags "github.com/jessevdk/go-flags"
@@ -20,7 +21,7 @@ func main() {
 
 	swaggerSpec, err := loads.Embedded(handler.SwaggerJSON, handler.FlatSwaggerJSON)
 	if err != nil {
-		log.Fatalln(err)
+		config.Logger.WithError(err)
 	}
 
 	api := operations.NewHandlerAPI(swaggerSpec)
@@ -31,11 +32,10 @@ func main() {
 	parser.ShortDescription = "Итоговое задание. Хэши."
 	parser.LongDescription = "Данный сервис должен, взаимодействуя с сервисом считающим хэши (по выбранному вами протоколу), получать из входящих строк их хэши, сохранять их в свою БД (выбор так же за вами) с присвоем id, по которым далее можно будет запрашивать хэши."
 	server.ConfigureFlags()
-	server.Port = config.Cfg.BIND_PORT
 	for _, optsGroup := range api.CommandLineOptionsGroups {
 		_, err := parser.AddGroup(optsGroup.ShortDescription, optsGroup.LongDescription, optsGroup.Options)
 		if err != nil {
-			log.Fatalln(err)
+			config.Logger.WithError(err)
 		}
 	}
 
@@ -48,10 +48,14 @@ func main() {
 		}
 		os.Exit(code)
 	}
-
 	server.ConfigureAPI()
 	if err := server.Serve(); err != nil {
-		log.Fatalln(err)
+		config.Logger.WithError(err)
 	}
+	//shutdown
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	<-c
+	server.Shutdown()
 
 }

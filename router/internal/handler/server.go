@@ -25,6 +25,7 @@ import (
 	flags "github.com/jessevdk/go-flags"
 	"golang.org/x/net/netutil"
 
+	"router/internal/config"
 	"router/internal/handler/operations"
 )
 
@@ -54,7 +55,11 @@ func NewServer(api *operations.HandlerAPI) *Server {
 
 // ConfigureAPI configures the API and handlers.
 func (s *Server) ConfigureAPI() {
+	s.Host = "0.0.0.0"
+	s.Port = config.Cfg.BIND_PORT
+
 	if s.api != nil {
+
 		s.handler = configureAPI(s.api)
 	}
 }

@@ -1,11 +1,14 @@
 package config
 
 import (
+	"runtime/debug"
+
 	logrus "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
 var Cfg *Config = &Config{}
+var Logger *logrus.Entry
 
 type Config struct {
 	BIND_PORT         int    `mapstructure:"BIND_PORT"`
@@ -36,7 +39,7 @@ func init() {
 	viper.SetDefault("BIND_PORT", 4444)
 	viper.SetDefault("LOGGING_LEVEL", "error")
 	viper.SetDefault("DB_PATH", "./gorm.db")
-	viper.SetDefault("GRPC_SERVICE_ADDR", "localhost")
+	viper.SetDefault("GRPC_SERVICE_ADDR", "server")
 	viper.SetDefault("GRPC_SERVICE_PORT", "50051")
 
 	err := viper.ReadInConfig()
@@ -45,4 +48,10 @@ func init() {
 	}
 	err = viper.Unmarshal(&Cfg)
 	Cfg.SetLoggingLevel(Cfg.LOGGING_LEVEL)
+	//set stacktrace to default
+	Logger = logrus.WithField("stack", string(debug.Stack()))
+	//Logger.SetFormatter(formatters.NewGelf("router"))
+	//hook := graylog.NewGraylogHook("localhost:12201", map[string]interface{}{})
+	//Logger.AddHook(hook)
+
 }
